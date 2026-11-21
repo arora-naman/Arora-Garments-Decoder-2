@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#14342b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Arora Garments Decoder</title>
+<style>
+/* Layout: one narrow column. Big code box, Decode button, two price rows. */
+:root {
+  --bg: #f4f1ea; --surface: #ffffff; --ink: #1c2420; --muted: #66706a; --line: #ddd8cc;
+  --accent: #14342b; --accent-ink: #ffffff; --warn: #a8361f;
+  --display: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101512; --surface: #19201c; --ink: #e9ede9; --muted: #98a39c; --line: #2c3631;
+    --accent: #8fd1b2; --accent-ink: #0d1a14; --warn: #ff9a85; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101512; --surface: #19201c; --ink: #e9ede9; --muted: #98a39c; --line: #2c3631;
+  --accent: #8fd1b2; --accent-ink: #0d1a14; --warn: #ff9a85; color-scheme: dark;
+}
+:root { --r: #14342b; --r-ink: #ffffff; --w: #1f4e8c; --w-ink: #ffffff; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --r: #8fd1b2; --r-ink: #0d1a14; --w: #8db8f0; --w-ink: #0b1626; } }
+:root[data-theme="dark"] { --r: #8fd1b2; --r-ink: #0d1a14; --w: #8db8f0; --w-ink: #0b1626; }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.45; }
+main { max-width: 480px; margin: 0 auto; padding: 24px 16px 40px; display: flex; flex-direction: column; gap: 16px; }
+h1 { font-family: var(--display); font-size: 26px; line-height: 1.1; margin: 0; text-wrap: balance; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+label { font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: .02em; }
+input, button { font: inherit; color: inherit; }
+#code {
+  width: 100%; font-family: var(--mono); font-size: 32px; letter-spacing: .1em; text-transform: uppercase; text-align: center;
+  padding: 14px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg);
+}
+#code:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.btns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.go { border: 0; background: var(--accent); color: var(--accent-ink); border-radius: 8px; padding: 16px; font-size: 26px; font-weight: 700; cursor: pointer; }
+.go:active { opacity: .8; }
+.clear { border: 1px solid var(--line); background: transparent; border-radius: 8px; padding: 12px; font-size: 16px; font-weight: 600; cursor: pointer; }
+.clear:active { opacity: .7; }
+#code::placeholder { font-family: var(--body); font-size: 18px; letter-spacing: normal; text-transform: none; color: var(--muted); opacity: 1; }
+#bR, .price.r { background: var(--r); color: var(--r-ink); }
+#bW, .price.w { background: var(--w); color: var(--w-ink); }
+.msg { min-height: 20px; font-size: 14px; color: var(--warn); }
+.result { display: flex; flex-direction: column; gap: 10px; }
+.code-echo { font-size: 13px; color: var(--muted); }
+.code-echo b { font-family: var(--mono); color: var(--ink); font-size: 16px; letter-spacing: .08em; }
+.price { text-align: center; border-radius: 10px; padding: 18px 14px; background: var(--accent); color: var(--accent-ink); }
+.price .v { font-family: var(--display); font-size: 52px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.hidden { display: none !important; }
+.iname { font-size: 20px; font-weight: 700; line-height: 1.2; word-break: break-word; }
+#vid { width: 100%; max-height: 60vh; border-radius: 8px; background: #000; object-fit: cover; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Arora Garments<br>Price Decoder</h1>
+
+  <form class="card" id="form" autocomplete="off">
+    <div class="field">
+      <label for="code">Product code</label>
+      <input id="code" type="text" autocapitalize="characters" autocorrect="off" spellcheck="false" maxlength="60" placeholder="Enter product code here">
+    </div>
+    <button id="scanBtn" type="button" class="clear">Scan QR</button>
+    <div class="btns">
+      <button id="bR" type="button" class="go">R</button>
+      <button id="bW" type="button" class="go">W</button>
+    </div>
+    <button id="clr" type="button" class="clear">Clear</button>
+    <div class="msg" id="msg" role="status"></div>
+  </form>
+
+  <section class="card hidden" id="scanBox" aria-label="Scan QR">
+    <video id="vid" muted playsinline></video>
+    <canvas id="cv" class="hidden"></canvas>
+    <button id="scanStop" type="button" class="clear">Cancel</button>
+  </section>
+
+  <section class="card result hidden" id="out" aria-live="polite" aria-label="Price">
+    <div class="code-echo">Product code <b id="echo"></b></div>
+    <div class="iname hidden" id="iname"></div>
+    <div class="price" id="box"><span class="v" id="pv"></span></div>
+  </section>
+</main>
+
+<script>
+(function () {
+  var itemName = "";
+  var nameOf = function (t) { var i = String(t).indexOf("-"); return i >= 0 ? String(t).slice(i + 1).replace(/[\u0000-\u001f]/g, "").trim().slice(0, 40) : ""; };
+  var K = String.fromCharCode.apply(null, [66, 76, 65, 67, 75, 72, 79, 82, 83, 69]);
+  var $ = function (id) { return document.getElementById(id); };
+
+  function decode(raw) {
+    var c = String(raw || "").split("-")[0].toUpperCase().replace(/[^A-Z0-9]/g, "");
+    var m = /^(\d{1,2})([A-Z]{1,5})(\d{1,2})$/.exec(c);
+    if (!m) return null;
+    var digits = "";
+    for (var i = 0; i < m[2].length; i++) {
+      var p = K.indexOf(m[2][i]);
+      if (p < 0) return null;
+      digits += p;
+    }
+    var cost = parseInt(digits, 10);
+    return {
+      code: c,
+      retail: Math.round(cost * (1 + parseInt(m[1], 10) / 100)),
+      wholesale: Math.round(cost * (1 + parseInt(m[3], 10) / 100))
+    };
+  }
+  var rs = function (n) { return "₹" + n.toLocaleString("en-IN"); };
+
+  function run(which) {
+    var r = decode($("code").value);
+    if (!r) {
+      $("out").classList.add("hidden");
+      $("msg").textContent = $("code").value.trim() ? "Code not recognised. Check the tag and try again." : "Enter the product code from the tag.";
+      return;
+    }
+    $("msg").textContent = "";
+    $("echo").textContent = r.code;
+    $("iname").textContent = itemName;
+    $("iname").classList.toggle("hidden", !itemName);
+    $("pv").textContent = rs(which === "R" ? r.retail : r.wholesale);
+    $("box").className = "price " + (which === "R" ? "r" : "w");
+    $("out").classList.remove("hidden");
+    $("code").blur();
+  }
+  $("form").addEventListener("submit", function (e) { e.preventDefault(); });
+  /* QR scan (needs a secure https page and camera permission) */
+  var stream = null, timer = null, busy = false;
+  function say(t) { $("msg").textContent = t; }
+  function stopScan() {
+    if (timer) { clearInterval(timer); timer = null; }
+    if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+    $("scanBox").classList.add("hidden");
+  }
+  function gotText(txt) {
+    var code = String(txt).split("-")[0].toUpperCase().replace(/[^A-Z0-9]/g, "");
+    stopScan();
+    itemName = nameOf(txt);
+    $("code").value = code;
+    $("out").classList.add("hidden");
+    say(decode(code) ? "" : "That QR code is not recognised. Type the code instead.");
+  }
+  function loop(read) {
+    timer = setInterval(function () {
+      var v = $("vid");
+      if (busy || v.readyState < 2) return;
+      busy = true;
+      Promise.resolve(read(v)).then(function (t) { if (t) gotText(t); }).catch(function () {}).then(function () { busy = false; });
+    }, 250);
+  }
+  function startScan() {
+    $("out").classList.add("hidden"); say("");
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { say("Scanning is not available on this page. Type the code instead."); return; }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false }).then(function (s) {
+      stream = s;
+      var v = $("vid"); v.srcObject = s; v.play();
+      $("scanBox").classList.remove("hidden");
+      if ("BarcodeDetector" in window) {
+        var det = new BarcodeDetector({ formats: ["qr_code"] });
+        loop(function (video) { return det.detect(video).then(function (r) { return r.length ? r[0].rawValue : ""; }); });
+      } else {
+        var go = function () {
+          var cv = $("cv"), cx = cv.getContext("2d", { willReadFrequently: true });
+          loop(function (video) {
+            cv.width = video.videoWidth; cv.height = video.videoHeight;
+            cx.drawImage(video, 0, 0);
+            var img = cx.getImageData(0, 0, cv.width, cv.height);
+            var r = window.jsQR(img.data, img.width, img.height);
+            return r ? r.data : "";
+          });
+        };
+        if (window.jsQR) go();
+        else {
+          var sc = document.createElement("script");
+          sc.src = "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js";
+          sc.onload = go;
+          sc.onerror = function () { stopScan(); say("Scanning could not load. Type the code instead."); };
+          document.head.appendChild(sc);
+        }
+      }
+    }).catch(function () { say("Camera is blocked. Allow camera access, or type the code."); });
+  }
+  $("scanBtn").addEventListener("click", startScan);
+  $("scanStop").addEventListener("click", stopScan);
+
+  $("clr").addEventListener("click", function () {
+    itemName = ""; $("code").value = ""; $("msg").textContent = ""; $("out").classList.add("hidden"); $("code").focus();
+  });
+  $("bR").addEventListener("click", function () { run("R"); });
+  $("bW").addEventListener("click", function () { run("W"); });
+  $("code").addEventListener("input", function () {
+    itemName = nameOf(this.value);
+    this.value = this.value.split("-")[0].toUpperCase().replace(/[^A-Z0-9]/g, "");
+    $("out").classList.add("hidden"); $("msg").textContent = "";
+  });
+})();
+</script>
+</body>
+</html>
